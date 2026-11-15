@@ -210,14 +210,14 @@ const DIFFS=[{e:'Easy',n:'ルーキー級',c:'#2f7a4a',d:.4,i:2,s:.76,h:.5,u:2.4
 const wd=()=>'術';const bn=()=>'術';
 let diffI=1,dif=DIFFS[1];
 let sdm=1,spVar=false,spellVar=0;const s1f=()=>(mode==='game'&&stageNo===1)?1.3:1;
-const N=x=>Math.max(1,Math.round(x*dif.d*sdm)), I=x=>Math.max(1,Math.round(x*dif.i/sdm));
+const N=x=>Math.max(1,Math.round(x*dif.d*sdm*(mode==='bonsp'?.8:1))), I=x=>Math.max(1,Math.round(x*dif.i*(mode==='bonsp'?1.25:1)/sdm));
 const CHARS=[
  {id:'jinny',n:'ジニー',tag:'初心者向け',spr:'player',por:'player_portrait',face:'face',
   desc:['六つのアニマを使い分ける、癖のない万能型','弾が広く散る','アニマは拾うほど強化。ただし時間で弱まる','迷ったらこちら。初心者におすすめ']},
  {id:'gustav',n:'グスタフ',tag:'上級者向け',spr:'gustav',por:'gustav_portrait',face:'face_gustav',
   desc:['鋼と炎、二刀から放つ波動','範囲は狭いが火力が高い','落ちるアニマは炎だけ。強化は時間で切れない','術は斬りつけ攻撃']},
 ];
-const TRIAL=true,LAST=TRIAL?3:7;
+const TRIAL=false,LAST=TRIAL?3:7;
 let charI=0,pending={mode:'game'},reach=1,stSel=0;let gClear=false;try{gClear=localStorage.getItem('megalith-gclear')==='1';}catch(e){}
 const gOK=()=>(!TRIAL&&gClear)||(typeof devOK==='function'&&devOK());
 try{charI=(+localStorage.getItem('megalith-char')===1&&gClear)?1:0;}catch(e){}
@@ -568,7 +568,7 @@ function applyDevPerms(){
   else{DEV=false;if(baseMusic!==null){musicUnlocked=baseMusic;met=baseMet;baseMusic=null;baseMet=null;}}
 }
 let devTaps=0,devTapT=0;
-function setDev(v){if(!devOK())return;DEV=v;try{localStorage.setItem('megalith-dev',v?'1':'0');}catch(e){}setMsg(v?'開発者モード ON(プレイ中にNキーか右下ボタンで次の面、Mキーか右下ボタンで中ボス)':'開発者モード OFF');sfx('cap');}
+function setDev(v){if(!devOK())return;DEV=v;try{localStorage.setItem('megalith-dev',v?'1':'0');}catch(e){}setMsg(v?'開発者モード ON(プレイ中にNキーか右下ボタンで次の面、Mキーか右下ボタンで中ボス。BON SPECIALは数字キー1〜8か右下ボタンでスペルへ)':'開発者モード OFF');sfx('cap');}
 const DEVB={x:W-92,y:H-30,w:84,h:22};
 const inDev=p=>p.x>=DEVB.x&&p.x<=DEVB.x+DEVB.w&&p.y>=DEVB.y&&p.y<=DEVB.y+DEVB.h;
 function devSkip(){
@@ -583,7 +583,17 @@ function devMid(){
   if(stageNo>5||stage.s!=='waves'||stage.mid){pop('中ボスに飛べません',FW/2,FH/2,'#ffd0d8',14,70);return;}
   devUsed=true;en.length=0;timers.length=0;stage.t=3800;
 }
+const DEVN={x:W-110,y:H-30,w:102,h:22},DEVP={x:W-110,y:H-56,w:102,h:22};
+const inR=(p,r)=>p.x>=r.x&&p.x<=r.x+r.w&&p.y>=r.y&&p.y<=r.y+r.h;
+function devSpell(i){
+  if(!DEV||mode!=='bonsp'||!boss||(state!=='play'&&state!=='paused'))return;
+  i=clamp(i,0,BONPH.length-1);devUsed=true;state='play';dlg=null;clearBullets(true);stage.s='boss';boss.dead=0;boss.y=boss.ty;startPhase(i);
+  pop('DEV: '+(i+1)+'番目のスペルへ',FW/2,230,'#9fe0c0',14,70);
+}
 function drawDev(){
+  if(DEV&&mode==='bonsp'&&(state==='play'||state==='paused')){ctx.save();ctx.globalAlpha=.9;
+    for(const [r,s] of [[DEVN,'DEV ▶次のスペル'],[DEVP,'DEV ◀前のスペル']]){ctx.fillStyle='rgba(30,60,50,.9)';ctx.fillRect(r.x,r.y,r.w,r.h);ctx.strokeStyle='#9fe0c0';ctx.strokeRect(r.x+.5,r.y+.5,r.w-1,r.h-1);txt(s,r.x+r.w/2,r.y+r.h/2+1,10,'#e8fff0','center');}
+    ctx.restore();return;}
   if(!DEV)return;ctx.save();ctx.globalAlpha=.9;ctx.fillStyle='#233';
   if(state==='play'||state==='paused'){ctx.fillStyle='rgba(30,60,50,.9)';ctx.fillRect(DEVB.x,DEVB.y,DEVB.w,DEVB.h);ctx.strokeStyle='#9fe0c0';ctx.strokeRect(DEVB.x+.5,DEVB.y+.5,DEVB.w-1,DEVB.h-1);txt('DEV ▶次の面',DEVB.x+DEVB.w/2,DEVB.y+DEVB.h/2+1,11,'#e8fff0','center');ctx.fillStyle='rgba(30,60,50,.9)';ctx.fillRect(DEVM.x,DEVM.y,DEVM.w,DEVM.h);ctx.strokeRect(DEVM.x+.5,DEVM.y+.5,DEVM.w-1,DEVM.h-1);txt('DEV ▶中ボス',DEVM.x+DEVM.w/2,DEVM.y+DEVM.h/2+1,11,'#e8fff0','center');}
   else if(state==='title')txt('DEV',8,10,10,'#2f7a4a');
@@ -623,7 +633,7 @@ const SNUM=[1,2,3,4,5,6,6];
 function fire(x,y,ang,spd,type,col,o){
   if(eb.length>3400)return null;
   {const MM=stageNo===1?MAP1:stageNo===2?MAP2:stageNo===3?MAP3:null;if(MM&&stage&&stage.s==='waves'&&MM[type])type=MM[type];if(stage&&stage.s==='waves'&&THEMC[stageNo])col=THEMC[stageNo][eb.length&1];}
-  const b={x,y,ang,spd:spd*dif.s,dsp:0,dan:0,minspd:0,maxspd:99,age:0,type,col,grazed:false,r:RAD[type],ev:null,wob:0,wf:.12,ph:rnd(0,6)};
+  const b={x,y,ang,spd:spd*dif.s*(mode==='bonsp'?.85:1),dsp:0,dan:0,minspd:0,maxspd:99,age:0,type,col,grazed:false,r:RAD[type],ev:null,wob:0,wf:.12,ph:rnd(0,6)};
   if(o)Object.assign(b,o);eb.push(b);
   if(parts.length<420&&Math.random()<.35)parts.push({x,y,vx:0,vy:0,life:7,max:7,col:'#ffffff',r:2.6,add:true});
   return b;
@@ -1145,6 +1155,7 @@ function bpat0(t){const b=boss,c=t%220;
   if(c%I(54)===27){const a=aim(b.x,b.y);for(let j=-2;j<=2;j++)fire(b.x,b.y,a+j*.16,3.0,'big','#ff8a3a');}
 }
 function bpat1(t){const b=boss,c=t%160;
+  if(t%1000===500)dropItems(b.x,b.y+10,['L']);
   if(c===0)moveTo((t/160|0)%2?rnd(80,150):rnd(234,304),rnd(66,100));
   const zz=bu=>{if(bu.age%14===0)bu.ang=bu.base+(((bu.age/14)|0)%2?.75:-.75)*bu.zs;};
   if(c===10||c===70){for(let j=-1;j<=1;j++){const a=aim(b.x,b.y)+j*.5;fire(b.x,b.y,a,2.5,'small','#ffe43a',{base:a,zs:1,fn:zz});fire(b.x,b.y,a,2.5,'small','#fff6a0',{base:a,zs:-1,fn:zz});}}
@@ -1166,6 +1177,7 @@ function bpat3(t){const b=boss,c=t%240;
   if(c>=120&&c%I(40)===0)fire(b.x,b.y,aim(b.x,b.y),1.3,'ring','#d4c4ff');
 }
 function bpat4(t){const b=boss,c=t%240;
+  if(t%1000===500)dropItems(b.x,b.y+10,['L']);
   const VG=['#58c85a','#ff8a2a','#e8423a','#ffd23a'];
   if(c===0)moveTo(rnd(110,274),rnd(60,90));
   if(c===30||c===150){const g=clamp(P.x+rnd(-60,60),40,FW-40);let k=0;for(let x=14;x<FW;x+=24,k++){if(Math.abs(x-g)<34)continue;fire(x,-8,Math.PI/2,1.0,'drop',VG[k%4],{dsp:.02,maxspd:3.2});}}
@@ -1439,7 +1451,7 @@ function endPhase(killed){
   }
   clearBullets(true);
   for(let i=0;i<24;i++){const a=i*TAU/24;parts.push({x:b.x,y:b.y,vx:Math.cos(a)*3,vy:Math.sin(a)*3,life:34,max:34,col:'#bfe6ff',r:2.5});}
-  if(killed){dropItems(b.x,b.y,ph.spell?['P','P','pt','pt','pt','pt','pt']:['p','p','pt','pt','pt']);sfx('kill');}
+  if(killed){dropItems(b.x,b.y,ph.spell?['P','P','pt','pt','pt','pt','pt']:['p','p','pt','pt','pt']);sfx('kill');if(mode==='bonsp'&&!ph.all){dropItems(b.x,b.y,['L']);P.gauge=MAXG;pop('ハートが出た！',FW/2,206,'#ffd0d8',16,90);}}
   if(stage.mid===1&&b.pi>=phases.length-1){stage.mid=2;phases=bd.phases.filter(p=>!p.mid&&!(p.hardOnly&&diffI<2));boss=null;stage.s='waves';stage.t=3500;pop('中ボス撃破',FW/2,150,'#ffe9a0',16,90);return;}
   if(b.pi>=phases.length-1){if(!b.deadDrop&&stage.mid!==1&&mode!=='bonsp'){b.deadDrop=true;spawnAnima(b.x,b.y,-1.5);}b.dead=1;stage.s='bossDead';stage.bt=0;flashT=14;sfx('cap');bgmStop(3);}
   else if(mode==='bonsp'&&BONT.after[b.pi]){const nx=b.pi+1;stage.s='dlg2';startDlg(BONT.after[b.pi],()=>{stage.s='boss';startPhase(nx);});}
@@ -2664,6 +2676,7 @@ function stepCore(){
   if(state==='title'&&pr('KeyD'))setDev(!DEV);
   if(state==='title'&&pr('KeyO'))openSettings();
   if(mode==='game'&&!RUSH&&!runAsked&&!devUsed&&P&&P.score>0&&((state==='over'&&!TA)||(state==='clear'&&result&&!result.next))){runAsked=true;setTimeout(openNameEntry,700);}
+  if((state==='play'||state==='paused')&&DEV&&mode==='bonsp'&&boss){for(let k=1;k<=8;k++)if(pr('Digit'+k))devSpell(k-1);if(pr('KeyN'))devSpell(boss.pi+1);if(pr('KeyB'))devSpell(boss.pi-1);}
   if((state==='play'||state==='paused')&&DEV&&pr('KeyN')){if(state==='paused')state='play';devSkip();}
   if((state==='play'||state==='paused')&&DEV&&pr('KeyM')){if(state==='paused')state='play';devMid();}
   if(state==='title')updTitle();
@@ -2737,6 +2750,7 @@ cv.addEventListener('contextmenu',e=>e.preventDefault());
 cv.addEventListener('pointerdown',e=>{
   e.preventDefault();audioInit();cv.focus();const p=toCanvas(e);
   if(e.pointerType==='mouse'){mouse.active=true;mouse.recent=600;mouse.x=p.x-PX;mouse.y=p.y-PY;}
+  if(DEV&&mode==='bonsp'&&boss&&(state==='play'||state==='paused')){if(inR(p,DEVN)){devSpell(boss.pi+1);return;}if(inR(p,DEVP)){devSpell(boss.pi-1);return;}}
   if(DEV&&(state==='play'||state==='paused')&&inDevM(p)){devMid();if(state==='paused')state='play';return;}
   if(DEV&&(state==='play'||state==='paused')&&inDev(p)){devSkip();if(state==='paused')state='play';return;}
   if(state==='play'){
