@@ -217,7 +217,7 @@ const CHARS=[
  {id:'gustav',n:'グスタフ',tag:'上級者向け',spr:'gustav',por:'gustav_portrait',face:'face_gustav',
   desc:['鋼と炎、二刀から放つ波動','範囲は狭いが火力が高い','落ちるアニマは炎だけ。強化は時間で切れない','術は斬りつけ攻撃']},
 ];
-const TRIAL=false,LAST=TRIAL?3:7;
+const TRIAL=true,LAST=TRIAL?3:7;
 let charI=0,pending={mode:'game'},reach=1,stSel=0;let gClear=false;try{gClear=localStorage.getItem('megalith-gclear')==='1';}catch(e){}
 const gOK=()=>(!TRIAL&&gClear)||(typeof devOK==='function'&&devOK());
 try{charI=(+localStorage.getItem('megalith-char')===1&&gClear)?1:0;}catch(e){}
@@ -1734,7 +1734,7 @@ function menuAct(){
   else if(menuSel===4)openIntro(['cast0','cast1','gl0','gl1','sy0','sy1','bm','sy2','sy3'],backTitle);
   else if(menuSel===5){bSel=0;state='bosses';}
   else if(menuSel===6)openRank();
-  else if(menuSel===7){charI=0;pending={mode:'bonsp'};newGame('bonsp');}
+  else if(menuSel===7){charI=0;csSel=0;pending={mode:'bonsp'};state='charsel';}
   else if(menuSel===8){diffI=(diffI+1)%4;}
 }
 const spellsOf=bi=>SPELL_LIST.map((s,i)=>({...s,gi:i})).filter(s=>s.bi===bi);
@@ -1793,7 +1793,20 @@ function confirmChar(){
   charI=csSel;sfx('ok');updWords();
   newGame(pending.mode,pending.spell);
 }
+const isBonSel=()=>pending&&pending.mode==='bonsp';
+const DIFD=['はじめてでも安心。弾が少なめ','ふつう。まずはここがおすすめ','ちょっと歯ごたえあり','弾幕好きの人向け'];
+const dfPanel=()=>compact?{x:12,y:252,w:W-24,h:172}:{x:334,y:46,w:280,h:300};
+const dfRect=j=>compact?{x:24,y:284+j*34,w:W-48,h:30}:{x:346,y:92+j*60,w:256,h:52};
 function updCharSel(){
+  if(isBonSel()){
+    csSel=0;
+    if(pr('ArrowLeft')||pr('KeyA')){diffI=(diffI+3)%4;sfx('ok');}
+    if(pr('ArrowRight')||pr('KeyD')){diffI=(diffI+1)%4;sfx('ok');}
+    if(pr('ArrowUp')||pr('KeyW')||pr('ArrowDown')||pr('KeyS')){bombSel[0]=1-bombSel[0];saveBomb();sfx('ok');}
+    if(pr('KeyX')||pr('Escape'))state='title';
+    if(pr('KeyZ')||pr('Enter')||pr('Space'))confirmChar();
+    return;
+  }
   if(pr('ArrowLeft')||pr('KeyA')||pr('ArrowRight')||pr('KeyD')){csSel=(csSel+1)%2;sfx('ok');}
   if(pr('ArrowUp')||pr('KeyW')||pr('ArrowDown')||pr('KeyS')){bombSel[csSel]=1-bombSel[csSel];saveBomb();sfx('ok');}
   if(pr('KeyX')||pr('Escape'))state='title';
@@ -2545,8 +2558,17 @@ function csLayout(i){return compact?{x:12,y:38+i*214,w:W-24,h:204}:{x:26+i*308,y
 function csBombRect(i,j){const L=csLayout(i);return compact?{x:L.x+116,y:L.y+L.h-70+j*32,w:L.w-116-12,h:28}:{x:L.x+12,y:L.y+L.h+8+j*34,w:L.w-24,h:30};}
 function drawCharSel(){
   drawBG(0,0,W,H,0.1);
-  txt('キャラクター・ボム選択',W/2,compact?20:24,19,'#fff','center',true,true);
+  const BS=isBonSel();
+  txt(BS?'BON SPECIAL　難易度・ボム選択':'キャラクター・ボム選択',W/2,compact?20:24,19,'#fff','center',true,true);
+  if(BS){const P_=dfPanel();win(P_.x,P_.y,P_.w,P_.h,.98);txt('難易度',P_.x+P_.w/2,P_.y+(compact?18:26),compact?15:17,C.ink,'center',false,true);
+    for(let j=0;j<4;j++){const R=dfRect(j),sel=diffI===j,D=DIFFS[j];
+      ctx.save();ctx.fillStyle=sel?'rgba(184,137,46,.55)':'rgba(58,40,24,.14)';ctx.fillRect(R.x,R.y,R.w,R.h);ctx.strokeStyle=sel?C.crim:'rgba(58,40,24,.5)';ctx.lineWidth=sel?2:1;ctx.strokeRect(R.x+.5,R.y+.5,R.w-1,R.h-1);
+      txt((sel?'● ':'○ ')+D.n,R.x+10,R.y+(compact?R.h/2+.5:19),compact?13:15,sel?D.c:C.ink2,null,false,sel);
+      txt(D.e,R.x+R.w-8,R.y+(compact?R.h/2+.5:19),9.5,C.ink2,'right');
+      if(!compact)txt(DIFD[j],R.x+10,R.y+39,11,C.ink2);
+      ctx.restore();}}
   CHARS.forEach((c,i)=>{
+    if(BS&&i===1)return;
     const L=csLayout(i),on=i===csSel;ctx.save();ctx.globalAlpha=on?1:.72;win(L.x,L.y,L.w,L.h,.98,on?'#f4e9c4':C.paper3);ctx.restore();
     if(on){ctx.strokeStyle=C.crim;ctx.lineWidth=2.5;ctx.strokeRect(L.x+1,L.y+1,L.w-2,L.h-2);}
     const im=IMG[c.por];
@@ -2569,7 +2591,7 @@ function drawCharSel(){
   });
   if(compact){const bm=(csSel?BOMBS_G:BOMBS_J)[bombSel[csSel]];ctx.font='500 11px '+FONT;let yy=H-50;wrapText(bm.nm+'：'+bm.d,W-28).slice(0,2).forEach(l=>{txt(l,14,yy,11,'#fff','left',true);yy+=15;});}
   if(csMsg>0){csMsg--;txt(csMsgT,W/2,compact?34:38,12,'#ffd0d8','center',true,true);}
-  txt(compact?'タップで選択 / 決定はキャラをもう一度タップ':'← →:キャラ   ↑ ↓:ボム   Z:決定   X:戻る',W/2,H-(compact?8:14),compact?11:12,'#f4ead0','center',true);
+  txt(BS?(compact?'タップで選択 / 決定はジニーをもう一度タップ':'← →:難易度   ↑ ↓:ボム   Z:決定   X:戻る'):(compact?'タップで選択 / 決定はキャラをもう一度タップ':'← →:キャラ   ↑ ↓:ボム   Z:決定   X:戻る'),W/2,H-(compact?8:14),compact?11:12,'#f4ead0','center',true);
 }
 function para(text,x,y,maxW,size,lh,col){ctx.font='500 '+size+'px '+FONT;const ls=wrapText(text,maxW);ls.forEach((l,j)=>txt(l,x,y+j*lh,size,col||C.ink));return ls.length;}
 function drawIntro(){
@@ -2779,8 +2801,9 @@ function menuTap(p){
     if(!hit)bBtn.forEach((b,k)=>{if(hit)return;if(p.x>=b.x&&p.x<=b.x+b.w&&p.y>=b.y&&p.y<=b.y+b.h){bSp=k;startPracFromCodex(b.gi);hit=true;}else if(p.x>=b.nx&&p.x<=b.nx+b.nw&&p.y>=b.y-4&&p.y<=b.y+b.h+4){bSp=k;sdOpen=k;sfx('ok');hit=true;}});
     if(!hit&&p.y>H-50)pressed.KeyX=true;
   }else if(state==='charsel'){
-    for(let i=0;i<2;i++)for(let j=0;j<2;j++){const R=csBombRect(i,j);if(p.x>=R.x&&p.x<=R.x+R.w&&p.y>=R.y&&p.y<=R.y+R.h){csSel=i;bombSel[i]=j;saveBomb();sfx('ok');return;}}
-    for(let i=0;i<2;i++){const L=csLayout(i);if(p.x>=L.x&&p.x<=L.x+L.w&&p.y>=L.y&&p.y<=L.y+L.h){if(csSel===i)confirmChar();else{csSel=i;sfx('ok');}return;}}
+    if(isBonSel()){for(let j=0;j<4;j++){const R=dfRect(j);if(p.x>=R.x&&p.x<=R.x+R.w&&p.y>=R.y&&p.y<=R.y+R.h){diffI=j;sfx('ok');return;}}csSel=0;}
+    for(let i=0;i<(isBonSel()?1:2);i++)for(let j=0;j<2;j++){const R=csBombRect(i,j);if(p.x>=R.x&&p.x<=R.x+R.w&&p.y>=R.y&&p.y<=R.y+R.h){csSel=i;bombSel[i]=j;saveBomb();sfx('ok');return;}}
+    for(let i=0;i<(isBonSel()?1:2);i++){const L=csLayout(i);if(p.x>=L.x&&p.x<=L.x+L.w&&p.y>=L.y&&p.y<=L.y+L.h){if(csSel===i)confirmChar();else{csSel=i;sfx('ok');}return;}}
     if(p.y>H-34)pressed.KeyX=true;
   }else if(state==='music'){
     if(mcOpen){pressed.KeyZ=true;return;}
